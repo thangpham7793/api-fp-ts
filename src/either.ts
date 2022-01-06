@@ -2,15 +2,20 @@ import * as E from 'fp-ts/lib/Either'
 import { flow } from 'fp-ts/lib/function'
 import * as t from 'io-ts'
 
-type User = {
+export type User = {
   name: string
 }
 
-const queryDecoder = new t.Type<string, string, unknown>(
+export interface ResponseDto {
+  readonly type: 'Error' | 'Success'
+}
+
+// zod could be better since we just need to lift the result
+export const queryDecoder = new t.Type<string>(
   'string',
   (i: unknown): i is string => typeof i === 'string',
   (input, context) =>
-    typeof input === 'string'
+    typeof input === 'string' && input.length > 0
       ? t.success(input)
       : t.failure(input, context, 'name must be a non-empty string'),
   t.identity,
@@ -28,69 +33,36 @@ const UserDatabase: User[] = [
   },
 ]
 
-type HttpResponse<T = never> =
+export type GetUserDto =
   | {
-      type: 'Error'
+      readonly type: 'Error'
       error: string
     }
   | {
-      type: 'Success'
-      data: T
+      readonly type: 'Success'
+      data: User
     }
 
-const getUserService = (name: string): E.Either<Error, User> => {
-  const maybeUser = UserDatabase.find((u) => u.name === name)
-  if (!maybeUser) return E.left(new Error('User not found'))
-
-  return E.right(maybeUser)
+// since this is the entrypoint we can safely assume that the passed in data is valid
+export const getUserService = (name: string) => {
+  return E.fromNullable(new Error('user not found'))(
+    UserDatabase.find((u) => u.name === name),
+  )
 }
 
-const handleServiceError = (err: Error): HttpResponse => {
+// imperative code would throw an exception
+export const handleServiceError = (err: Error): GetUserDto => {
   return {
     type: 'Error',
     error: err.message,
   }
 }
 
-const handleInputValidationError = <T>(errs: t.Errors): HttpResponse<T> => {
-  console.log(errs[0])
-  return {
-    type: 'Error',
-    error: errs.map((e) => e.message).join('\n'),
-  }
-}
-
-const handleSuccess = (u: User): HttpResponse<User> => {
+export const handleSuccess = (u: User): GetUserDto => {
   return { type: 'Success', data: u }
 }
 
-const tryGetUser = flow(
+export const getUser = flow(
   getUserService,
-  // map to api response
-  E.bimap(handleServiceError, handleSuccess),
-  // serialization
-  // E.bimap(JSON.stringify, JSON.stringify),
-  // // client acknowledges - delegate to whatever api framework (IO here)
-  // E.bimap(console.error, console.log),
+  E.fold(handleServiceError, handleSuccess),
 )
-
-// E.fold actually makes sense since it all ends up being a HttpResponse at the end of the day
-// it captures the data transformation in both cases
-
-// ramda's pipe but with type!
-const runGetUser = flow(
-  queryDecoder.decode,
-  E.fold(<never>handleInputValidationError, tryGetUser),
-)
-
-const program = (input: unknown) => {
-  returnToClient(runGetUser(input))
-}
-
-const returnToClient = (res: unknown) => {
-  console.log(`Received ${JSON.stringify(res)}`)
-}
-
-program('Tom')
-program(null)
-program(undefined)
