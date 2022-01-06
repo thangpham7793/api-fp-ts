@@ -1,4 +1,4 @@
-## Examples for using fp-ts
+## Practicing fp-ts in a rest-api context
 
 ### Other resources
 
