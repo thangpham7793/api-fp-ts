@@ -1,5 +1,5 @@
 import * as E from 'fp-ts/lib/Either'
-import { User } from 'user.service'
+import { User } from './user.service'
 
 // for now we couple db model with domain model
 const UserDatabase: User[] = [

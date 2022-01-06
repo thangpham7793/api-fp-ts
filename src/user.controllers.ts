@@ -5,7 +5,7 @@ import * as E from 'fp-ts/lib/Either'
 import { z } from 'zod'
 
 import { parseWith } from './parseWith'
-import { HttpHandler, ResponseDto } from 'types'
+import { HttpHandler, ResponseDto } from './types'
 
 // this should be reusable across all handlers since all errs are of type t.Errors
 const handleInputValidationError =
