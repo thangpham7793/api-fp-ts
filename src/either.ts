@@ -1,6 +1,6 @@
 import * as E from 'fp-ts/lib/Either'
 import { flow } from 'fp-ts/lib/function'
-import * as t from 'io-ts'
+import { z } from 'zod'
 
 export type User = {
   name: string
@@ -10,16 +10,24 @@ export interface ResponseDto {
   readonly type: 'Error' | 'Success'
 }
 
-// zod could be better since we just need to lift the result
-export const queryDecoder = new t.Type<string>(
-  'string',
-  (i: unknown): i is string => typeof i === 'string',
-  (input, context) =>
-    typeof input === 'string' && input.length > 0
-      ? t.success(input)
-      : t.failure(input, context, 'name must be a non-empty string'),
-  t.identity,
-)
+export const querySchema = z.string().min(1)
+
+export const eitherFromZod = <Out, In>(res: z.SafeParseReturnType<Out, In>) => {
+  return res.success ? E.right(res.data) : E.left(res.error)
+}
+
+/**
+ * adapter between zod's API & fp-ts. Basically a custom EitherFrom
+ */
+export const parseWith = <Out, In = Out, Def = z.ZodTypeDef>(
+  schema: z.ZodType<Out, Def, In>,
+) =>
+  // need to bind or safeParse's `this` is undefined
+  // the calling code `this` is not schema, but something else
+  flow(schema.safeParse.bind(schema), eitherFromZod)
+
+// curry with a schema for a particular handler
+export const parseGetUserQuery = parseWith<string>(querySchema)
 
 const UserDatabase: User[] = [
   {

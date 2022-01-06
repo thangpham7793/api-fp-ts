@@ -1,19 +1,25 @@
-import { getUser, queryDecoder, ResponseDto } from './src/either'
+import {
+  eitherFromZod,
+  getUser,
+  parseGetUserQuery,
+  querySchema,
+  ResponseDto,
+} from './src/either'
 import express from 'express'
 import { pipe, flow } from 'fp-ts/lib/function'
 import * as E from 'fp-ts/lib/Either'
-import * as t from 'io-ts'
 
 const app = express()
 
 // this should be reusable across all handlers since all errs are of type t.Errors
 const handleInputValidationError =
-  (res: express.Response) => (errs: t.Errors) => {
+  (res: express.Response) =>
+  <T>(error: T) => {
     res
       .status(400)
       .json({
         type: 'InputValidationError',
-        error: errs.map((e) => e.message).join('\n'),
+        error,
       })
       .send()
   }
@@ -30,8 +36,7 @@ app.get('/users', (req, res) => {
   pipe(
     // extract user inputs
     req.query.name,
-    // validate input
-    queryDecoder.decode,
+    parseGetUserQuery,
     // E.bimap == E.mapLeft, E.map(Right)
     // at this point the logics branches out, hence our abstraction
     E.bimap(handleInputValidationError(res), flow(getUser, responseWith(res))),
