@@ -1,5 +1,5 @@
 import * as E from 'fp-ts/lib/Either'
-import { flow, pipe } from 'fp-ts/lib/function'
+import { flow, identity, pipe } from 'fp-ts/lib/function'
 import * as TE from 'fp-ts/TaskEither'
 import * as T from 'fp-ts/Task'
 import { readUser, UserRecord } from './user.repository'
@@ -8,7 +8,7 @@ import { z } from 'zod'
 // only service should have knowledge of what is considered as a valid user id
 const isValidUserId = z.string().regex(/^[a-f\d]{24}$/i, 'invalid user id')
 
-export type UserId = string & {
+type UserId = string & {
   readonly type: 'UserId'
 }
 
@@ -55,7 +55,7 @@ export type ReadUserDto =
     }
 
 // imperative code would throw an exception
-export const handleRepoError = (err: Error): ReadUserDto => {
+const handleRepoError = (err: Error): ReadUserDto => {
   return {
     type: 'Internal Server Error',
     error: err.message,
@@ -68,15 +68,13 @@ const toUserModel = (u: UserRecord): User => ({
   id: u.id as UserId,
 })
 
-const toReadUserDto = (u: User): UserReadModel => ({
+const toUserReadModel = (u: User): UserReadModel => ({
   fullName: u.firstName + ' ' + u.lastName,
   id: u.id,
 })
 
-export const handleSuccess = (r: UserRecord | undefined): ReadUserDto => {
-  if (!r) return { type: 'Entity Not Found', error: 'not found' }
-
-  return { type: 'Success', data: pipe(r, toUserModel, toReadUserDto) }
+const toReadUserDto = (r: UserRecord): ReadUserDto => {
+  return { type: 'Success', data: pipe(r, toUserModel, toUserReadModel) }
 }
 
 export const getUser = flow(
@@ -86,9 +84,19 @@ export const getUser = flow(
     T.of,
     flow(
       (userId) => TE.tryCatch(() => readUser(userId), E.toError),
-      // since client always gets a response back, it makes sense to fold the 2 possible outcomes into one Task that will definitely return a GetUserDto
-      // basically we destroy the Either wrapper at this point
-      TE.fold(flow(handleRepoError, T.of), flow(handleSuccess, T.of)),
+      TE.fold(
+        flow(handleRepoError, T.of),
+        flow(
+          // captures the null/undefined check and fallback value
+          E.fromNullable<ReadUserDto>({
+            type: 'Entity Not Found',
+            error: 'not found',
+          }),
+          // return default value if user is not found
+          E.fold(identity, toReadUserDto),
+          T.of,
+        ),
+      ),
     ),
   ),
 )
