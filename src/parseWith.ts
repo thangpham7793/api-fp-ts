@@ -2,7 +2,9 @@ import * as E from 'fp-ts/lib/Either'
 import { flow } from 'fp-ts/lib/function'
 import { z } from 'zod'
 
-const eitherFromZod = <Out, In>(res: z.SafeParseReturnType<Out, In>) => {
+const eitherFromZod = <Out, In>(
+  res: z.SafeParseReturnType<Out, In>,
+): E.Either<z.ZodIssue[], In> => {
   // TODO: do some mapping from zod errors(issues) to sth more generic
   // hmm thinking of Semigroup here :D
   return res.success ? E.right(res.data) : E.left(res.error.issues)

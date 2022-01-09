@@ -27,7 +27,7 @@ const handleInputValidationError =
 const respondWith =
   <TBody extends ResponseDto>(res: express.Response<TBody>) =>
   (body: TBody) => {
-    res.status(body.type === 'Error' ? 404 : 200).json(body)
+    res.status(body.type === 'Failure' ? 404 : 200).json(body)
   }
 
 const querySchema = z.string().min(1)
@@ -40,8 +40,10 @@ export const handleGetUser: HttpHandler = (req, res) => {
   pipe(
     req.query.name,
     parseGetUserQuery,
-    E.mapLeft(handleInputValidationError(res)),
-    // caller needs to call the async computation from within either
-    E.map(flow(getUser, T.map(respondWith(res)), runTask)),
+    E.bimap(
+      handleInputValidationError(res),
+      // caller needs to call the async computation from within either
+      flow(getUser, T.map(respondWith(res)), runTask),
+    ),
   )
 }
