@@ -2,10 +2,11 @@ import * as E from 'fp-ts/lib/Either'
 import { flow, pipe } from 'fp-ts/lib/function'
 import * as TE from 'fp-ts/TaskEither'
 import * as T from 'fp-ts/Task'
-import { findUserAsync } from './user.repository'
+import { readUser } from './user.repository'
 
 // domain model
 export type User = {
+  id: string
   name: string
 }
 
@@ -33,9 +34,9 @@ export const handleSuccess = (u: User | undefined): GetUserDto => {
   return { type: 'Success', data: u }
 }
 
-export const getUser = (name: string) =>
+export const getUser = (id: string) =>
   pipe(
-    TE.tryCatch(() => findUserAsync(name), E.toError),
+    TE.tryCatch(() => readUser(id), E.toError),
     // since client always gets a response back, it makes sense to fold the 2 possible outcome into one Task that will definitely return a GetUserDto
     // basically we destroy the Either wrapper at this point
     TE.fold(flow(handleRepoError, T.of), flow(handleSuccess, T.of)),

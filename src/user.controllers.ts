@@ -27,19 +27,20 @@ const handleInputValidationError =
 const respondWith =
   <TBody extends ResponseDto>(res: express.Response<TBody>) =>
   (body: TBody) => {
+    // TODO: need more fine-grained mapping here
     res.status(body.type === 'Failure' ? 404 : 200).json(body)
   }
 
-const querySchema = z.string().min(1)
+const querySchema = z.string().regex(/^[a-f\d]{24}$/i, 'invalid user id')
 
 // curry with a schema for a particular handler
-export const parseGetUserQuery = parseWith<string>(querySchema)
+export const parseReadUserQuery = parseWith<string>(querySchema)
 const runTask = (t: T.Task<void>) => t()
 
 export const handleGetUser: HttpHandler = (req, res) => {
   pipe(
-    req.query.name,
-    parseGetUserQuery,
+    req.params.id,
+    parseReadUserQuery,
     E.bimap(
       handleInputValidationError(res),
       // caller needs to call the async computation from within either
