@@ -1,4 +1,4 @@
-import { getUser } from './user.service'
+import { getUser, GetUserDto } from './user.service'
 import express from 'express'
 import { flow, pipe } from 'fp-ts/lib/function'
 import * as E from 'fp-ts/lib/Either'
@@ -6,7 +6,7 @@ import * as T from 'fp-ts/lib/Task'
 import { z } from 'zod'
 
 import { parseWith } from './parseWith'
-import { HttpHandler, ResponseDto } from './types'
+import { HttpHandler } from './types'
 
 // this should be reusable across all handlers since all errs are of type t.Errors
 const handleInputValidationError =
@@ -25,10 +25,19 @@ const handleInputValidationError =
 // shouldn't abstract this too early though, as the mapping may vary from handlers to handlers
 // not all failure would be 404 or 400
 const respondWith =
-  <TBody extends ResponseDto>(res: express.Response<TBody>) =>
+  <TBody extends GetUserDto>(res: express.Response<TBody>) =>
   (body: TBody) => {
     // TODO: need more fine-grained mapping here
-    res.status(body.type === 'Failure' ? 404 : 200).json(body)
+    switch (body.type) {
+      case 'Entity Not Found':
+        res.status(404).json(body)
+        break
+      case 'Success':
+        res.status(200).json(body)
+        break
+      default:
+        res.status(500).send()
+    }
   }
 
 const querySchema = z.string().regex(/^[a-f\d]{24}$/i, 'invalid user id')

@@ -12,7 +12,11 @@ export type User = {
 
 export type GetUserDto =
   | {
-      readonly type: 'Failure'
+      readonly type: 'Internal Server Error'
+      error: string
+    }
+  | {
+      readonly type: 'Entity Not Found'
       error: string
     }
   | {
@@ -23,13 +27,13 @@ export type GetUserDto =
 // imperative code would throw an exception
 export const handleRepoError = (err: Error): GetUserDto => {
   return {
-    type: 'Failure',
+    type: 'Internal Server Error',
     error: err.message,
   }
 }
 
 export const handleSuccess = (u: User | undefined): GetUserDto => {
-  if (!u) return { type: 'Failure', error: 'not found' }
+  if (!u) return { type: 'Entity Not Found', error: 'not found' }
 
   return { type: 'Success', data: u }
 }
