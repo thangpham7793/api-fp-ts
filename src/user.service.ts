@@ -1,6 +1,7 @@
 import * as E from 'fp-ts/lib/Either'
-import { flow } from 'fp-ts/lib/function'
-import { findUser } from './user.repository'
+import { pipe } from 'fp-ts/lib/function'
+import * as TE from 'fp-ts/TaskEither'
+import { findUserAsync } from './user.repository'
 
 // domain model
 export type User = {
@@ -18,15 +19,22 @@ export type GetUserDto =
     }
 
 // imperative code would throw an exception
-export const handleServiceError = (err: Error): GetUserDto => {
+export const handleRepoError = (err: Error): GetUserDto => {
   return {
     type: 'Error',
     error: err.message,
   }
 }
 
-export const handleSuccess = (u: User): GetUserDto => {
+export const handleSuccess = (u: User | undefined): GetUserDto => {
+  if (!u) return { type: 'Error', error: 'not found' }
+
   return { type: 'Success', data: u }
 }
 
-export const getUser = flow(findUser, E.fold(handleServiceError, handleSuccess))
+export const getUser = (name: string) =>
+  pipe(
+    TE.tryCatch(() => findUserAsync(name), E.toError),
+    // E.fold(handleRepoError, handleSuccess),
+    TE.bimap(handleRepoError, handleSuccess),
+  )
