@@ -2,14 +2,6 @@ import * as E from 'fp-ts/lib/Either'
 import { flow } from 'fp-ts/lib/function'
 import { z } from 'zod'
 
-const eitherFromZod = <In, Out>(
-  res: z.SafeParseReturnType<In, Out>,
-): E.Either<z.ZodIssue[], Out> => {
-  // TODO: do some mapping from zod errors(issues) to sth more generic
-  // hmm thinking of Semigroup here :D
-  return res.success ? E.right(res.data) : E.left(res.error.issues)
-}
-
 /**
  * adapter between zod's API & fp-ts. Basically a custom EitherFrom
  */
@@ -18,4 +10,6 @@ export const parseWith = <Out, In = Out, Def = z.ZodTypeDef>(
 ) =>
   // need to bind or safeParse's `this` is undefined
   // the calling code `this` is not schema, but something else
-  flow(schema.safeParse.bind(schema), eitherFromZod)
+  flow(schema.safeParse.bind(schema), (res) =>
+    res.success ? E.right(res.data) : E.left(res.error.issues),
+  )

@@ -11,12 +11,12 @@ import { HttpHandler } from './types'
 // this should be reusable across all handlers since all errs are of type t.Errors
 const handleInputValidationError =
   (res: express.Response) =>
-  <T>(error: T) => {
+  <T extends z.ZodIssue[]>(errors: T) => {
     res
       .status(400)
       .json({
-        type: 'InputValidationError',
-        error,
+        type: 'Input Validation Error',
+        errors: errors.map(({ message }) => ({ message })),
       })
       .send()
   }
