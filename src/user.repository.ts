@@ -1,3 +1,6 @@
+import * as E from 'fp-ts/lib/Either'
+import * as TE from 'fp-ts/lib/TaskEither'
+
 export type UserRecord = {
   id: string
   firstName: string
@@ -28,5 +31,8 @@ const UserDatabase: UserRecord[] = [
   },
 ]
 
-export const readUser = (id: string) =>
-  Promise.resolve(UserDatabase.find((u) => u.id === id))
+export const findUserById = (id: string) =>
+  TE.tryCatch(
+    () => Promise.resolve(UserDatabase.find((u) => u.id === id)),
+    E.toError,
+  )

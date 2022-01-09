@@ -2,7 +2,7 @@ import * as E from 'fp-ts/lib/Either'
 import { flow, identity, pipe } from 'fp-ts/lib/function'
 import * as TE from 'fp-ts/TaskEither'
 import * as T from 'fp-ts/Task'
-import { readUser, UserRecord } from './user.repository'
+import { findUserById, UserRecord } from './user.repository'
 import { z } from 'zod'
 
 // only service should have knowledge of what is considered as a valid user id
@@ -16,7 +16,7 @@ const isUserId = (s: string): s is UserId => {
   return isValidUserId.safeParse(s).success
 }
 
-const makeUserId = (s: string): E.Either<ReadUserDto, UserId> => {
+const parseUserId = (s: string): E.Either<ReadUserDto, UserId> => {
   if (isUserId(s)) return E.right(s)
 
   return E.left({
@@ -54,7 +54,6 @@ export type ReadUserDto =
       data: UserReadModel
     }
 
-// imperative code would throw an exception
 const handleRepoError = (err: Error): ReadUserDto => {
   return {
     type: 'Internal Server Error',
@@ -77,26 +76,21 @@ const toReadUserDto = (r: UserRecord): ReadUserDto => {
   return { type: 'Success', data: pipe(r, toUserModel, toUserReadModel) }
 }
 
-export const getUser = flow(
-  makeUserId,
-  E.fold(
-    // web layer expects a Task, hence the lift
-    T.of,
+const getUserFromRepo = flow(
+  // not sure why matchE & fold doesn work here
+  TE.match<Error, ReadUserDto, UserRecord | undefined>(
+    handleRepoError,
     flow(
-      (userId) => TE.tryCatch(() => readUser(userId), E.toError),
-      TE.fold(
-        flow(handleRepoError, T.of),
-        flow(
-          // captures the null/undefined check and fallback value
-          E.fromNullable<ReadUserDto>({
-            type: 'Entity Not Found',
-            error: 'not found',
-          }),
-          // return default value if user is not found
-          E.fold(identity, toReadUserDto),
-          T.of,
-        ),
-      ),
+      E.fromNullable<ReadUserDto>({
+        type: 'Entity Not Found',
+        error: 'not found',
+      }),
+      E.fold(identity, toReadUserDto),
     ),
   ),
+)
+
+export const getUser = flow(
+  parseUserId,
+  E.fold(T.of, flow(findUserById, getUserFromRepo)),
 )
