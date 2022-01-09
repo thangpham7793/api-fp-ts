@@ -1,18 +1,30 @@
-import { User } from './user.service'
+export type UserRecord = {
+  id: string
+  firstName: string
+  lastName: string
+  // simple field to make UserRecord different from UserModel
+  createdAt: Date
+}
 
 // for now we couple db model with domain model
-const UserDatabase: User[] = [
+const UserDatabase: UserRecord[] = [
   {
     id: '61da89330366054b203b5f7a',
-    name: 'John',
+    firstName: 'John',
+    lastName: 'Smith',
+    createdAt: new Date(),
   },
   {
     id: '61da893a748c78f4ffbb87f3',
-    name: 'Smith',
+    firstName: 'Smith',
+    lastName: 'Smith',
+    createdAt: new Date(),
   },
   {
     id: '61da893f42815b89905a312e',
-    name: 'Tom',
+    firstName: 'Tom',
+    lastName: 'Smith',
+    createdAt: new Date(),
   },
 ]
 
